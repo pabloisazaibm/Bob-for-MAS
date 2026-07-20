@@ -3,6 +3,8 @@
 A self-service toolkit for IBM Customer Success Engineers. Clone this repo, fill in one file, paste one prompt into Bob — and walk away with a fully loaded Maximo environment and a customer-ready demo script.
 
 **What it does:**
+- Connects Bob directly to any MAS Manage instance via the extended `maximo-mcp` server
+- Creates, queries, updates, and runs actions on **any Maximo Object Structure** — assets, work orders, PMs, job plans, inventory, locations — all from a natural language prompt in Bob
 - Bulk-creates 10 industry-specific assets and 10 work orders (with task steps and planned materials) directly in your Maximo instance via REST API
 - Generates a Word doc demo script that references your exact record numbers, descriptions, parts, and costs — no placeholders
 
@@ -14,7 +16,7 @@ A self-service toolkit for IBM Customer Success Engineers. Clone this repo, fill
 
 Before you start, confirm you have:
 
-- [ ] **Bob** running with the `maximo-mcp` server configured (see CSE How-To Guide)
+- [ ] **Bob** running with the `maximo-mcp` server configured — point it at `mcp/maximo-mcp-server.js` in this repo (see `mcp/README.md`)
 - [ ] **Python 3.7+** installed (`python3 --version`)
 - [ ] **python-docx** installed (`pip3 install python-docx`)
 - [ ] **A MAS Manage instance** with API access (TechZone GTM demo or customer env)
@@ -93,6 +95,10 @@ mas-demo-framework/
 ├── README.md                    ← you are here
 ├── .env.template                ← copy to .env and fill in
 ├── .gitignore
+├── mcp/
+│   ├── maximo-mcp-server.js     ← extended MCP server (adds create, update, run_action)
+│   ├── package.json             ← MCP server dependencies
+│   └── README.md                ← MCP setup and tool reference
 ├── requirements/
 │   ├── my_demo.md               ← FILL THIS IN (your demo brief)
 │   └── example_noaa.md          ← completed reference example (NOAA buoy fleet)

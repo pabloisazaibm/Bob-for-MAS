@@ -578,7 +578,9 @@ def build_how_to_guide():
     para(doc, 'What Bob can do once connected to Maximo:', bold=True, size=10)
     for b in [
         'Query live Maximo data — assets, work orders, inventory — in natural language',
-        'Bulk-create demo assets, work orders, task operations, and planned materials via the Maximo REST API',
+        'Create records in any Object Structure: assets, work orders, PMs, job plans, inventory, locations, and more',
+        'Update existing records via PATCH — change descriptions, priorities, planned materials, task steps',
+        'Run Maximo business actions — approve work orders, change status, generate WOs from PM schedules',
         'Generate a full 1-hour demo script with talking points, navigation steps, and Q&A prep',
         'Render results as formatted tables directly in the chat window',
     ]:
@@ -632,7 +634,8 @@ def build_how_to_guide():
       "alwaysAllow": [
         "list_object_structures", "get_schema_details",
         "query_maximo", "render_carbon_table",
-        "render_carbon_details", "get_instance_details"
+        "render_carbon_details", "get_instance_details",
+        "create_record", "update_record", "run_action"
       ]
     }
   }
@@ -688,8 +691,83 @@ def build_how_to_guide():
     )
     doc.add_paragraph()
 
-    # ── Part 3 ────────────────────────────────────────────────────────────────
-    set_heading(doc, 'Part 3: Load Demo Data', 1, (0x7c, 0x5c, 0xd8))
+    # ── Part 3: Write Operations via Bob ─────────────────────────────────────
+    set_heading(doc, 'Part 3: Create, Update, and Run Actions via Bob', 1, (0x05, 0x96, 0x69))
+    para(doc,
+        'Bob can now create and modify records directly in Maximo without any Python script. '
+        'The MCP server exposes three write tools that cover the full CRUD loop across every '
+        'Object Structure in your instance.',
+        size=10)
+
+    table(doc,
+        ['Tool', 'HTTP Method', 'What It Does'],
+        [
+            ['create_record', 'POST',  'Creates a new record in any Object Structure. Pass the OS name, a field payload, and optionally a siteid.'],
+            ['update_record', 'PATCH', 'Updates an existing record by OSLC where clause. Only the supplied fields change — all others are untouched (MERGE semantics).'],
+            ['run_action',    'POST',  'Invokes a Maximo business action (status change, generate WO from PM, approve PO). Resolves the record by where clause, then fires the action.'],
+        ],
+        widths=[3.5, 2.5, 8.5]
+    )
+
+    set_heading(doc, 'Example: Create an Asset', 2)
+    callout(doc, 'Bob Prompt',
+        '"Create an asset in Maximo: assetnum DEMO-AST-100, description \'Hydraulic Press Unit A\', '
+        'site BEDFORD, org EAGLENA, location CENTRAL, serialnum SN-2025-100."',
+        'F3F0FF')
+    para(doc, 'Bob will call get_schema_details on mxapiasset to confirm field names, then call create_record with the correct payload. '
+         'The tool returns the new record\'s Location header URL confirming creation.', italic=True, size=9)
+
+    set_heading(doc, 'Example: Create a PM Schedule', 2)
+    callout(doc, 'Bob Prompt',
+        '"Create a PM schedule in Maximo for asset DEMO-AST-100 at site BEDFORD. '
+        'Frequency: every 90 days. Work type PM. Link to job plan JP-INSPECT-01. '
+        'Owner group: MAINT."',
+        'F3F0FF')
+    para(doc, 'Bob calls get_schema_details on mxapipm, constructs the payload with pmnum, assetnum, siteid, frequency, frequnit=DAYS, worktype, jpnum, ownergroup — then calls create_record.',
+         italic=True, size=9)
+
+    set_heading(doc, 'Example: Create a Job Plan', 2)
+    callout(doc, 'Bob Prompt',
+        '"Create a job plan in Maximo: jpnum JP-INSPECT-01, description \'Annual Hydraulic Inspection\', '
+        'site BEDFORD. Add 4 task steps: visual check, fluid sample, pressure test, sign-off."',
+        'F3F0FF')
+    para(doc, 'Bob calls get_schema_details on mxapijobplan, builds the payload including the jobtask array with taskid, description, and istask fields, then calls create_record.',
+         italic=True, size=9)
+
+    set_heading(doc, 'Example: Approve a Work Order (Status Change)', 2)
+    callout(doc, 'Bob Prompt',
+        '"Approve work order NOAA-WO-002 at site BEDFORD in Maximo."',
+        'F3F0FF')
+    para(doc, 'Bob calls run_action with objectStructure=mxapiwodetail, where=wonum="NOAA-WO-002" and siteid="BEDFORD", '
+         'action=wsmethod:changeStatus, payload={status:"APPR", memo:"Approved via Bob"}.',
+         italic=True, size=9)
+
+    set_heading(doc, 'Example: Generate Work Orders from a PM', 2)
+    callout(doc, 'Bob Prompt',
+        '"Generate the next work order from PM schedule DEMO-PM-100 in Maximo."',
+        'F3F0FF')
+    para(doc, 'Bob calls run_action with action=wsmethod:generateWO against the MXAPIPM object structure. '
+         'Maximo creates the work order and returns the new WO number.',
+         italic=True, size=9)
+
+    set_heading(doc, 'Example: Update a Record', 2)
+    callout(doc, 'Bob Prompt',
+        '"Update work order NOAA-WO-001 in Maximo — change the priority to 1 and '
+        'add a note: \'Expedited — hurricane season preparation\'."',
+        'F3F0FF')
+    para(doc, 'Bob calls update_record with objectStructure=mxapiwodetail, where=wonum="NOAA-WO-001" and siteid="BEDFORD", '
+         'payload={wopriority:1, description_longdescription:"Expedited — hurricane season preparation"}.',
+         italic=True, size=9)
+
+    callout(doc, 'Key Rule',
+        'Always call get_schema_details before create_record or update_record on an unfamiliar Object Structure. '
+        'Bob does this automatically — but if you are building prompts manually, knowing the field names '
+        'and types prevents 400 validation errors.',
+        'FFF8E1')
+    doc.add_paragraph()
+
+    # ── Part 4 (was 3): Load Demo Data via Python ─────────────────────────────
+    set_heading(doc, 'Part 4: Load Demo Data via Python Script', 1, (0x7c, 0x5c, 0xd8))
 
     set_heading(doc, 'Option A — Ask Bob to Generate Everything', 2)
     callout(doc, 'Bob Prompt',
@@ -748,7 +826,7 @@ OWNER      = "<PERSON ID>" # PERSON.PERSONID — may contain spaces''')
     doc.add_paragraph()
 
     # ── Part 4 ────────────────────────────────────────────────────────────────
-    set_heading(doc, 'Part 4: Generate the Demo Script via Bob', 1, (0x7c, 0x5c, 0xd8))
+    set_heading(doc, 'Part 5: Generate the Demo Script via Bob', 1, (0x7c, 0x5c, 0xd8))
     callout(doc, 'Bob Prompt',
         '"Generate a 1-hour demo script for [CUSTOMER] covering asset management, '
         'work order management, inventory, and reporting. Include [INDUSTRY]-specific '
@@ -769,8 +847,8 @@ OWNER      = "<PERSON ID>" # PERSON.PERSONID — may contain spaces''')
     )
     doc.add_paragraph()
 
-    # ── Part 5: Troubleshooting ───────────────────────────────────────────────
-    set_heading(doc, 'Part 5: Troubleshooting Reference', 1, (0xdc, 0x26, 0x26))
+    # ── Part 6: Troubleshooting ───────────────────────────────────────────────
+    set_heading(doc, 'Part 6: Troubleshooting Reference', 1, (0xdc, 0x26, 0x26))
 
     set_heading(doc, 'Test URL and API Key Before Running Scripts', 2)
     code(doc, '''BASE="https://<your-manage-host>/maximo"
