@@ -1,100 +1,128 @@
 # Bob Prompt — MAS Demo Generator
 # =================================
 # INSTRUCTIONS FOR THE CSE:
-# 1. Complete requirements/my_demo.md first
-# 2. Fill in your .env file
-# 3. Copy everything below this comment block and paste it into Bob as a new message
-# 4. Bob will do the rest — do not interrupt until it reports "Done."
-#
-# Replace every [BRACKETED VALUE] with your actual value from .env and my_demo.md
+# 1. Copy everything below this comment block and paste it into Bob as a new message
+# 2. Fill in the "My Environment" section from your .env file
+# 3. Replace the Step 3 section with a natural language description of your demo —
+#    tell Bob what the customer does, what you want to demo, and any naming
+#    conventions or prefixes you want used. Bob handles the rest.
+# 4. Bob will ask clarifying questions if it needs more detail — answer and let it continue.
 # ─────────────────────────────────────────────────────────────────────────────────
 
 ---
 
-I want to set up a full IBM Maximo Application Suite demo for **[CUSTOMER NAME]**.
+I want to set up a full IBM Maximo Application Suite demo environment.
 
-Please work through the following steps in order. Do not skip any step. Report the result of each step before moving to the next.
+Please work through the following steps in order. Do not skip any step. Confirm the result of each step before moving to the next. If you hit an error at any step, diagnose it and fix it before continuing — do not skip ahead.
 
 ---
 
 ## My Environment
 
-- **Maximo API base URL:** `[API_BASE from .env]`
-- **API Key:** `[MAXIMO_API_KEY from .env]`
-- **Site:** `[MAXIMO_SITE from .env]`
-- **Org:** `[MAXIMO_ORG from .env]`
-- **Location:** `[MAXIMO_LOCATION from .env]`
-- **Owner (Person ID):** `[MAXIMO_OWNER from .env]`
+- **Maximo URL:** `[paste your MAXIMO_URL here]`
+- **API Key:** `[paste your MAXIMO_API_KEY here]`
+- **Site:** `[paste your site ID here — e.g. BEDFORD]`
+- **Org:** `[paste your org ID here — e.g. EAGLENA]`
 
 ---
 
-## My Demo Brief
+## My Demo
 
-[PASTE THE FULL CONTENTS OF requirements/my_demo.md HERE — replace this line]
+[
+  Describe your demo here in plain English. Include:
+
+  - Who the customer is and what industry they are in
+  - What physical assets they operate (equipment, vehicles, infrastructure, etc.)
+  - The naming prefix or abbreviation you want used for asset and WO numbers
+    (e.g. "use the prefix ACME", or "use the customer's ticker symbol PWR")
+  - Any industry-specific terminology, part names, failure modes, or regulatory
+    standards that should appear in the demo data and talking points
+  - The high-drama scenario — the one failure or emergency that opens the demo
+  - Anything else that would make this feel real for the customer
+    (e.g. "they are very focused on regulatory compliance",
+     "their biggest pain point is unplanned downtime",
+     "they care a lot about inventory costs")
+
+  Example (replace with your own):
+  "The customer is a municipal water utility operating 40 pump stations across
+   the city. Use the prefix MWU. Their biggest pain is emergency pump failures
+   that take stations offline and trigger EPA compliance violations. The
+   high-drama opening scenario is a main pump failure at Station 7 during
+   peak demand. They are particularly interested in PM schedules, job plans,
+   and parts inventory."
+]
 
 ---
 
 ## Step 1 — Validate the connection
 
-Run `get_instance_details`. Confirm `instanceUrl` is populated and not empty.
-If it is empty, stop and tell me — do not proceed.
+Run `get_instance_details`. Confirm `instanceUrl` is populated and report back the URL.
+If it is empty, stop — do not proceed.
 
 ---
 
-## Step 2 — Validate site, location, and person
+## Step 2 — Validate the environment
 
-1. Query `mxapilocation` where `siteid="[MAXIMO_SITE]"` — confirm `[MAXIMO_LOCATION]` appears in the results.
-2. Query `mxapiperson` — confirm a person with `personid="[MAXIMO_OWNER]"` exists.
+Query Maximo to confirm:
+1. The site ID I gave you exists — query `mxapilocation` filtered to my site and show me 3 results
+2. At least one valid location exists at that site — tell me the location codes you find
+3. At least one active person exists — query `mxapiperson` and show me 3 personid + displayname results
 
-If either is not found, stop and tell me what you found instead.
-
----
-
-## Step 3 — Generate the demo data
-
-Based on my demo brief above, generate:
-
-**10 assets** specific to my customer's industry and asset types, following this format:
-- Asset numbers: `[PREFIX]-AST-001` through `[PREFIX]-AST-010`
-- Each asset needs: a realistic description, a serial number (`SRN-2024-001` through `SRN-2024-010`), and location `[MAXIMO_LOCATION]`
-- Do NOT include vendor, assettype, or status fields — Maximo will reject them
-
-**10 work orders** — one per asset, following this format:
-- WO numbers: `[PREFIX]-WO-001` through `[PREFIX]-WO-010`
-- Mix of work types: roughly 4 CM (Corrective Maintenance) and 6 PM (Preventive Maintenance)
-- Make `[PREFIX]-WO-002` (or the most dramatic one) a CM / emergency scenario tied to the high-drama failure from my brief — wopriority: 1
-- Each WO needs: 4–6 realistic task steps specific to the asset type, and 3–4 planned materials with realistic part numbers, descriptions, quantities, and unit costs
-- The primary CM work order should have a high-value part (>$1,000) that makes for a good "parts availability" story in Scene 3
-- Work types must be one of: PM, CM, CP, EM
-
-Show me the complete generated data (assets list + work orders list) for my review before writing any files.
+Tell me what you found. If anything is missing, stop and tell me what to fix.
 
 ---
 
-## Step 4 — Write and run the loader
+## Step 3 — Design the demo data
 
-Once I approve the data in Step 3:
+Based on my demo description above, propose the following **before creating anything in Maximo**:
 
-1. Write the complete, runnable `scripts/demo_loader.py` with:
-   - The `CONFIGURATION` block filled in with my environment values from Step 1
-   - The `ASSETS` list populated with the 10 assets from Step 3
-   - The `WORK_ORDERS` list populated with the 10 work orders from Step 3
-   - The engine section (`login()`, `post()`, `create_assets()`, `create_work_orders()`) kept exactly as-is from the template
+**Tell me which Maximo Object Structures you plan to create records in**, and why each one supports the demo story. At minimum include assets and work orders. Also consider whether the demo would benefit from:
+- Job Plans (mxapijobplan) — reusable task templates that attach to PMs and WOs
+- PM Schedules (mxapipm) — automated maintenance triggers linked to assets and job plans
+- Inventory records (mxapiinventory) — storeroom stock that makes the parts story real
 
-2. Run: `python3 scripts/demo_loader.py`
+For each Object Structure you plan to use, list:
+- What records you will create
+- The naming prefix/convention (using any abbreviation or nomenclature I specified above)
+- How it connects to the other records in the demo flow
 
-3. Report each asset and work order result — I need to see a `✓` for every record.
-   If any fail, diagnose and fix before proceeding.
+Then propose:
+- **10 assets** with realistic names, descriptions, and serial numbers using my prefix
+- **10 work orders** — one per asset, with a realistic mix of CM (emergency/corrective) and PM (scheduled/preventive) work types, realistic task steps, and planned materials with real-world part names and costs
+- The primary CM work order should feature a high-value critical part (>$1,000) that anchors the inventory / parts availability scene
+- Any job plans or PM schedules that would make the demo more compelling
+
+Show me the full proposed data set for my review. **Do not create anything in Maximo until I approve.**
+
+---
+
+## Step 4 — Load the data
+
+Once I approve the proposal in Step 3, create all the records directly in Maximo using the MCP tools:
+
+1. For each Object Structure in your plan (assets first, then job plans if any, then work orders, then PMs if any):
+   - Call `get_schema_details` to confirm the correct field names
+   - Call `create_record` for each record
+   - Report ✓ or ✗ for every record as you go
+   - If any record fails, diagnose the error, fix the payload, and retry before continuing
+
+2. Once all records are created, query Maximo to verify:
+   - Query `mxapiasset` filtered to my site and prefix — confirm count matches
+   - Query `mxapiwodetail` filtered to my site and prefix — confirm count matches
+   - Show me the first 3 of each so I can visually confirm they look right
 
 ---
 
 ## Step 5 — Generate the demo script
 
-Once all records are confirmed created in Maximo:
+Once all records are confirmed in Maximo:
 
-1. Update the `ASSETS`, `WORK_ORDERS`, `WO002_TASKS`, `WO002_MATERIALS`, `WO001_TASKS`, and `WO001_MATERIALS` constants in `scripts/build_docs.py` to match the exact data loaded in Step 4.
+1. Update `scripts/build_docs.py` — replace the NOAA demo constants (`ASSETS`, `WORK_ORDERS`, task lists, materials lists, cover page, opening hook, all scene narration, Q&A, and checklist) with content specific to this customer and the exact records just loaded.
 
-2. Update the cover page, opening hook, all scene navigation cues, narration, Q&A, and checklist in `build_demo_script()` to be specific to **[CUSTOMER NAME]** and their industry — no generic placeholders.
+2. Make the script feel real for this customer:
+   - Use their industry terminology throughout
+   - Reference the actual asset numbers, WO numbers, part numbers, and costs from Step 4
+   - Tailor the objection handling and Q&A to their industry's typical concerns
 
 3. Run: `python3 scripts/build_docs.py`
 
@@ -104,10 +132,11 @@ Once all records are confirmed created in Maximo:
 
 ---
 
-## Step 6 — Final check
+## Step 6 — Final confirmation
 
-Query Maximo to confirm the data is live:
-1. Query `mxapiasset` for assets at site `[MAXIMO_SITE]` with assetnum starting with `[PREFIX]` — show me the count and first 3 records
-2. Query `mxapiwo` for work orders at site `[MAXIMO_SITE]` with wonum starting with `[PREFIX]` — show me count, WO numbers, descriptions, and status
+Summarise what was built:
+- List every Object Structure records were created in, with counts
+- Confirm the demo script is saved and tailored to this customer
+- Give me the 3-sentence opening hook I should use to start the live demo
 
-Report: "Demo environment ready. [N] assets and [N] work orders loaded. Demo script saved to output/MAS_Demo_Script.docx."
+Report: "Demo environment ready for [CUSTOMER]. [summary of what was created]. Demo script saved to output/MAS_Demo_Script.docx."
